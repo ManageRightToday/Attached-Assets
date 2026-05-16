@@ -1,5 +1,5 @@
 import React from "react";
-import { Star, ShieldAlert, Award, Lock, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { Star, ShieldAlert, Award, Lock, FileText, CheckCircle2, AlertCircle, MapPin } from "lucide-react";
 import { Manager } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
