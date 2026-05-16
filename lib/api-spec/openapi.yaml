@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PropVault API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: search
+    description: Property manager search
+  - name: managers
+    description: Manager details
 paths:
   /healthz:
     get:
@@ -24,6 +28,84 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /search:
+    get:
+      operationId: searchManagers
+      tags: [search]
+      summary: Search property managers by ZIP code
+      description: Returns ranked property managers near a ZIP code
+      parameters:
+        - name: zip
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 5
+            maxLength: 5
+          description: US ZIP code
+        - name: radius
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [5, 10, 25, 50]
+            default: 10
+          description: Search radius in miles
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+        "400":
+          description: Invalid ZIP code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /managers/{id}:
+    get:
+      operationId: getManager
+      tags: [managers]
+      summary: Get full manager details
+      description: Returns full details for a specific property manager (requires unlock)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Manager details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Manager"
+        "404":
+          description: Manager not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [managers]
+      summary: Get platform statistics
+      description: Returns aggregate stats about the PropVault database
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +116,103 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Manager:
+      type: object
+      required:
+        - id
+        - name
+        - address
+        - city
+        - googleRating
+        - googleReviewCount
+        - bbbRating
+        - bbbComplaints
+        - feeTransparent
+        - yearsInBusiness
+        - specialties
+        - responseTime
+        - score
+        - rank
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        googleRating:
+          type: number
+        googleReviewCount:
+          type: integer
+        bbbRating:
+          type: string
+        bbbComplaints:
+          type: integer
+        feePercent:
+          type: ["number", "null"]
+        feeTransparent:
+          type: boolean
+        yearsInBusiness:
+          type: integer
+        specialties:
+          type: array
+          items:
+            type: string
+        responseTime:
+          type: string
+        score:
+          type: integer
+        rank:
+          type: integer
+        locked:
+          type: boolean
+
+    SearchResults:
+      type: object
+      required:
+        - total
+        - zip
+        - radius
+        - freeManagers
+        - lockedCount
+      properties:
+        total:
+          type: integer
+        zip:
+          type: string
+        radius:
+          type: integer
+        freeManagers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Manager"
+        lockedCount:
+          type: integer
+        isDemo:
+          type: boolean
+
+    PlatformStats:
+      type: object
+      required:
+        - totalManagers
+        - citiesCovered
+        - avgTrustScore
+        - managersWithAPlus
+      properties:
+        totalManagers:
+          type: integer
+        citiesCovered:
+          type: integer
+        avgTrustScore:
+          type: number
+        managersWithAPlus:
+          type: integer

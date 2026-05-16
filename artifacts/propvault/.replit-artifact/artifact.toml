@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "PropVault"
+version = "1.0.0"
+id = "artifacts/propvault"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18089
+
+[services.development]
+run = "pnpm --filter @workspace/propvault run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/propvault", "run", "build" ]
+publicDir = "artifacts/propvault/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18089"
+BASE_PATH = "/"
