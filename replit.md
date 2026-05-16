@@ -1,36 +1,53 @@
-# [Project name]
+# PropVault
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A property manager intelligence platform that helps landlords find and vet trusted property managers by ZIP code, ranked by Google ratings, BBB standing, fee transparency, and years of experience.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/propvault run dev` — run the frontend (port 18089)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `GOOGLE_PLACES_API_KEY` — Google Places API key (Places API must be enabled in Google Cloud Console)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- Frontend: React + Vite, Tailwind CSS, shadcn/ui, framer-motion
+- Fonts: Playfair Display (serif/headings), DM Sans (sans/body)
+- Routing: wouter
+- Data fetching: TanStack Query + Orval-generated hooks
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — OpenAPI contract (source of truth for all API shapes)
+- `lib/api-client-react/` — generated React Query hooks (never edit manually)
+- `lib/api-zod/` — generated Zod schemas for server-side validation
+- `artifacts/api-server/src/routes/search.ts` — search, manager, stats routes + scoring engine + Google Places integration
+- `artifacts/propvault/src/pages/Home.tsx` — main single-page experience
+- `artifacts/propvault/src/components/ManagerCard.tsx` — manager card with locked overlay
+- `artifacts/propvault/src/components/PlatformStatsBar.tsx` — top stats bar
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Contract-first API**: OpenAPI spec drives both server Zod validation and client React Query hooks via Orval codegen. Never write raw fetch calls on the frontend.
+- **Server-side Google Places proxy**: The API key is kept server-side only; the frontend never touches Google APIs directly.
+- **Places Text Search for geocoding**: We use `textsearch` to resolve ZIP → lat/lng instead of the Geocoding API, since Places API is the only requirement (avoids needing a second API enabled).
+- **Graceful demo fallback**: If `GOOGLE_PLACES_API_KEY` is absent or the API errors, the server falls back to 7 realistic demo managers and sets `isDemo: true` in the response.
+- **Freemium model**: Top 2 ranked results are returned with `locked: true`; the frontend blurs them with a paywall overlay.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Search property managers by US ZIP code and radius (5/10/25/50 miles)
+- Trust Score algorithm: Google rating (35%), BBB standing (30%), fee transparency (20%), experience (15%)
+- Each card shows: Trust Score bar, Google rating, BBB rating, management fee %, specialties, response time
+- Top 2 results are locked behind a PropVault membership paywall teaser
+- Platform stats bar: total managers indexed, cities covered, avg trust score
 
 ## User preferences
 
@@ -38,7 +55,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The Places API must be enabled in Google Cloud Console; the Geocoding API is NOT required (we use textsearch instead).
+- Run `pnpm --filter @workspace/api-spec run codegen` after any OpenAPI spec changes before editing routes or components.
+- Do not edit generated files in `lib/api-client-react/` or `lib/api-zod/` directly.
 
 ## Pointers
 

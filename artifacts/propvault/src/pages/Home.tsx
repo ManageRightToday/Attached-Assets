@@ -99,6 +99,13 @@ export default function Home() {
                 </div>
               ) : searchResults ? (
                 <>
+                  {searchResults.isDemo && (
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-md bg-gold/10 border border-gold/20 text-sm text-gold">
+                      <span className="font-semibold">Demo mode</span>
+                      <span className="text-muted-foreground">— showing sample data. Search any US ZIP code for live results.</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between border-b border-border pb-4">
                     <h2 className="text-2xl font-serif text-foreground">
                       Results for <span className="text-gold">{searchResults.zip}</span>

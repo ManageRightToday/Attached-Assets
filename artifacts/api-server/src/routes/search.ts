@@ -3,6 +3,8 @@ import { SearchManagersQueryParams } from "@workspace/api-zod";
 
 const router = Router();
 
+const GOOGLE_API_KEY = process.env["GOOGLE_PLACES_API_KEY"] ?? "";
+
 // ============================================================
 // RANKING ALGORITHM WEIGHTS
 // ============================================================
@@ -14,7 +16,7 @@ const WEIGHTS = {
 };
 
 // ============================================================
-// DEMO DATA
+// TYPES
 // ============================================================
 interface RawManager {
   id: string;
@@ -32,6 +34,9 @@ interface RawManager {
   responseTime: string;
 }
 
+// ============================================================
+// DEMO DATA — used when no API key is present
+// ============================================================
 const DEMO_MANAGERS: RawManager[] = [
   {
     id: "pm-001",
@@ -141,6 +146,93 @@ const DEMO_MANAGERS: RawManager[] = [
 ];
 
 // ============================================================
+// GOOGLE PLACES API
+// ============================================================
+interface GeoResult {
+  lat: number;
+  lng: number;
+  city: string;
+}
+
+async function geocodeZip(zip: string): Promise<GeoResult | null> {
+  // Use Places Text Search to resolve ZIP → lat/lng without Geocoding API
+  const url =
+    `https://maps.googleapis.com/maps/api/place/textsearch/json` +
+    `?query=${encodeURIComponent(zip + " USA")}` +
+    `&key=${GOOGLE_API_KEY}`;
+
+  const res = await fetch(url);
+  const data = (await res.json()) as {
+    status: string;
+    results: Array<{
+      geometry: { location: { lat: number; lng: number } };
+      formatted_address: string;
+      name: string;
+    }>;
+  };
+
+  if (data.status !== "OK" || !data.results.length) return null;
+
+  const result = data.results[0];
+  const { lat, lng } = result.geometry.location;
+
+  // Extract city, state from formatted address (e.g. "New York, NY 10001, USA")
+  const parts = result.formatted_address.split(",").map((s) => s.trim());
+  const city = parts.slice(0, 2).join(", ").replace(/\s+\d{5}.*$/, "").trim();
+
+  return { lat, lng, city };
+}
+
+interface PlacesResult {
+  place_id: string;
+  name: string;
+  vicinity: string;
+  rating?: number;
+  user_ratings_total?: number;
+  business_status?: string;
+}
+
+async function searchPlaces(
+  lat: number,
+  lng: number,
+  radiusMeters: number,
+): Promise<PlacesResult[]> {
+  const url =
+    `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
+    `?location=${lat},${lng}` +
+    `&radius=${radiusMeters}` +
+    `&keyword=property+management+company` +
+    `&key=${GOOGLE_API_KEY}`;
+
+  const res = await fetch(url);
+  const data = (await res.json()) as { status: string; results: PlacesResult[] };
+
+  if (data.status !== "OK" && data.status !== "ZERO_RESULTS") return [];
+
+  return (data.results ?? []).filter(
+    (p) => !p.business_status || p.business_status === "OPERATIONAL",
+  );
+}
+
+function placesToManagers(places: PlacesResult[], city: string): RawManager[] {
+  return places.map((p, i) => ({
+    id: p.place_id,
+    name: p.name,
+    address: p.vicinity,
+    city,
+    googleRating: p.rating ?? 3.0,
+    googleReviewCount: p.user_ratings_total ?? 0,
+    bbbComplaints: 0,
+    bbbRating: "N/A",
+    feePercent: null,
+    feeTransparent: false,
+    yearsInBusiness: 5,
+    specialties: [],
+    responseTime: "Unknown",
+  }));
+}
+
+// ============================================================
 // SCORING ENGINE
 // ============================================================
 function scoreManager(m: RawManager): number {
@@ -153,6 +245,7 @@ function scoreManager(m: RawManager): number {
     "B+": 74,
     B: 60,
     C: 40,
+    "N/A": 55,
   };
   const bbbScore = Math.max(0, (bbbBase[m.bbbRating] ?? 50) - m.bbbComplaints * 15);
 
@@ -174,7 +267,7 @@ function scoreManager(m: RawManager): number {
 // ============================================================
 // ROUTES
 // ============================================================
-router.get("/search", (req, res) => {
+router.get("/search", async (req, res) => {
   const parsed = SearchManagersQueryParams.safeParse({
     zip: req.query["zip"],
     radius: req.query["radius"] ? Number(req.query["radius"]) : undefined,
@@ -187,7 +280,44 @@ router.get("/search", (req, res) => {
 
   const { zip, radius = 10 } = parsed.data;
 
-  const ranked = DEMO_MANAGERS.map((m) => ({ ...m, score: scoreManager(m) }))
+  let rawManagers: RawManager[];
+  let isDemo = false;
+
+  if (GOOGLE_API_KEY) {
+    try {
+      const geo = await geocodeZip(zip);
+      if (!geo) {
+        res.status(400).json({ error: "Could not locate that ZIP code. Please check and try again." });
+        return;
+      }
+
+      const radiusMeters = (radius ?? 10) * 1609;
+      const places = await searchPlaces(geo.lat, geo.lng, radiusMeters);
+      rawManagers = placesToManagers(places, geo.city);
+    } catch (err) {
+      req.log.error({ err }, "Google Places API error, falling back to demo data");
+      rawManagers = DEMO_MANAGERS;
+      isDemo = true;
+    }
+  } else {
+    rawManagers = DEMO_MANAGERS;
+    isDemo = true;
+  }
+
+  if (!rawManagers.length) {
+    res.json({
+      total: 0,
+      zip,
+      radius,
+      freeManagers: [],
+      lockedCount: 0,
+      isDemo,
+    });
+    return;
+  }
+
+  const ranked = rawManagers
+    .map((m) => ({ ...m, score: scoreManager(m) }))
     .sort((a, b) => b.score - a.score)
     .map((m, i) => ({ ...m, rank: i + 1 }));
 
@@ -201,7 +331,7 @@ router.get("/search", (req, res) => {
     radius,
     freeManagers: [...freeManagers, ...lockedManagers],
     lockedCount: lockedManagers.length,
-    isDemo: true,
+    isDemo,
   });
 });
 
@@ -214,8 +344,9 @@ router.get("/managers/:id", (req, res) => {
   }
 
   const score = scoreManager(manager);
-  const ranked = DEMO_MANAGERS.map((m) => ({ ...m, score: scoreManager(m) }))
-    .sort((a, b) => b.score - a.score);
+  const ranked = DEMO_MANAGERS.map((m) => ({ ...m, score: scoreManager(m) })).sort(
+    (a, b) => b.score - a.score,
+  );
   const rank = ranked.findIndex((m) => m.id === manager.id) + 1;
 
   res.json({ ...manager, score, rank, locked: false });
