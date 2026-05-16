@@ -20,7 +20,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -34,7 +33,6 @@ paths:
       operationId: searchManagers
       tags: [search]
       summary: Search property managers by ZIP code
-      description: Returns ranked property managers near a ZIP code
       parameters:
         - name: zip
           in: query
@@ -43,7 +41,6 @@ paths:
             type: string
             minLength: 5
             maxLength: 5
-          description: US ZIP code
         - name: radius
           in: query
           required: false
@@ -51,7 +48,6 @@ paths:
             type: integer
             enum: [5, 10, 25, 50]
             default: 10
-          description: Search radius in miles
       responses:
         "200":
           description: Search results
@@ -70,8 +66,7 @@ paths:
     get:
       operationId: getManager
       tags: [managers]
-      summary: Get full manager details
-      description: Returns full details for a specific property manager (requires unlock)
+      summary: Get full manager profile with contact info and reviews
       parameters:
         - name: id
           in: path
@@ -84,7 +79,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Manager"
+                $ref: "#/components/schemas/ManagerDetail"
         "404":
           description: Manager not found
           content:
@@ -97,7 +92,6 @@ paths:
       operationId: getStats
       tags: [managers]
       summary: Get platform statistics
-      description: Returns aggregate stats about the PropVault database
       responses:
         "200":
           description: Platform stats
@@ -110,11 +104,10 @@ components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
     ErrorResponse:
       type: object
@@ -175,6 +168,90 @@ components:
           type: integer
         locked:
           type: boolean
+
+    Review:
+      type: object
+      required: [authorName, rating, text, relativeTime]
+      properties:
+        authorName:
+          type: string
+        rating:
+          type: integer
+        text:
+          type: string
+        relativeTime:
+          type: string
+
+    ManagerDetail:
+      type: object
+      required:
+        - id
+        - name
+        - address
+        - city
+        - googleRating
+        - googleReviewCount
+        - bbbRating
+        - bbbComplaints
+        - feeTransparent
+        - yearsInBusiness
+        - specialties
+        - responseTime
+        - score
+        - rank
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        googleRating:
+          type: number
+        googleReviewCount:
+          type: integer
+        bbbRating:
+          type: string
+        bbbComplaints:
+          type: integer
+        feePercent:
+          type: ["number", "null"]
+        feeTransparent:
+          type: boolean
+        yearsInBusiness:
+          type: integer
+        specialties:
+          type: array
+          items:
+            type: string
+        responseTime:
+          type: string
+        score:
+          type: integer
+        rank:
+          type: integer
+        locked:
+          type: boolean
+        phone:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        googleMapsUrl:
+          type: ["string", "null"]
+        openNow:
+          type: ["boolean", "null"]
+        openingHours:
+          type: array
+          items:
+            type: string
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        about:
+          type: ["string", "null"]
 
     SearchResults:
       type: object

@@ -3,6 +3,7 @@ import { Star, ShieldAlert, Award, Lock, FileText, CheckCircle2, AlertCircle, Ma
 import { Manager } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 export default function ManagerCard({ manager }: { manager: Manager }) {
   const isGreen = manager.score >= 85;
@@ -13,8 +14,8 @@ export default function ManagerCard({ manager }: { manager: Manager }) {
   const googleColor = manager.googleRating >= 4.5 ? "text-status-green" : manager.googleRating >= 4.0 ? "text-gold" : "text-status-red";
   const bbbColor = ["A+", "A"].includes(manager.bbbRating) ? "text-status-green" : manager.bbbRating === "B+" ? "text-gold" : "text-status-red";
 
-  return (
-    <div className={`relative w-full rounded-lg border bg-card p-6 shadow-sm overflow-hidden group transition-all duration-300 hover:border-gold/30 ${manager.locked ? 'border-border' : 'border-border'}`}>
+  const content = (
+    <div className={`relative w-full rounded-lg border bg-card p-6 shadow-sm overflow-hidden transition-all duration-300 ${manager.locked ? 'border-border' : 'border-border hover:border-gold/50 hover:shadow-lg hover:shadow-gold/5 group'}`}>
       {manager.locked && (
         <div className="absolute inset-0 z-20 backdrop-blur-md bg-background/40 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-card border border-gold/30 flex items-center justify-center mb-4 shadow-xl">
@@ -65,7 +66,7 @@ export default function ManagerCard({ manager }: { manager: Manager }) {
         {/* Mid Col: Details & Metrics */}
         <div className="flex-1 flex flex-col gap-4">
           <div>
-            <h2 className="font-serif text-2xl font-bold text-foreground">{manager.name}</h2>
+            <h2 className={`font-serif text-2xl font-bold text-foreground ${!manager.locked && 'group-hover:text-gold transition-colors'}`}>{manager.name}</h2>
             <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
               <MapPin className="w-4 h-4 opacity-70" />
               {manager.city} • {manager.yearsInBusiness} Years in Business
@@ -130,5 +131,15 @@ export default function ManagerCard({ manager }: { manager: Manager }) {
 
       </div>
     </div>
+  );
+
+  if (manager.locked) {
+    return content;
+  }
+
+  return (
+    <Link href={`/managers/${manager.id}`} className="block w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-lg">
+      {content}
+    </Link>
   );
 }

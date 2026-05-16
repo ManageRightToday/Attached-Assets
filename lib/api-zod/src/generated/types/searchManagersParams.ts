@@ -9,13 +9,9 @@ import type { SearchManagersRadius } from './searchManagersRadius';
 
 export type SearchManagersParams = {
 /**
- * US ZIP code
  * @minLength 5
  * @maxLength 5
  */
 zip: string;
-/**
- * Search radius in miles
- */
 radius?: SearchManagersRadius;
 };

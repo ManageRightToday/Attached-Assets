@@ -335,21 +335,146 @@ router.get("/search", async (req, res) => {
   });
 });
 
-router.get("/managers/:id", (req, res) => {
-  const manager = DEMO_MANAGERS.find((m) => m.id === req.params["id"]);
+// ============================================================
+// GOOGLE PLACES DETAILS API
+// ============================================================
+interface PlaceDetail {
+  name: string;
+  formatted_address: string;
+  formatted_phone_number?: string;
+  international_phone_number?: string;
+  website?: string;
+  url?: string;
+  rating?: number;
+  user_ratings_total?: number;
+  opening_hours?: {
+    open_now?: boolean;
+    weekday_text?: string[];
+  };
+  reviews?: Array<{
+    author_name: string;
+    rating: number;
+    text: string;
+    relative_time_description: string;
+  }>;
+  editorial_summary?: { overview?: string };
+  business_status?: string;
+  vicinity?: string;
+}
 
-  if (!manager) {
+async function fetchPlaceDetail(placeId: string): Promise<PlaceDetail | null> {
+  const fields = [
+    "name",
+    "formatted_address",
+    "formatted_phone_number",
+    "international_phone_number",
+    "website",
+    "url",
+    "rating",
+    "user_ratings_total",
+    "opening_hours",
+    "reviews",
+    "editorial_summary",
+    "business_status",
+    "vicinity",
+  ].join(",");
+
+  const url =
+    `https://maps.googleapis.com/maps/api/place/details/json` +
+    `?place_id=${encodeURIComponent(placeId)}` +
+    `&fields=${fields}` +
+    `&key=${GOOGLE_API_KEY}`;
+
+  const res = await fetch(url);
+  const data = (await res.json()) as { status: string; result?: PlaceDetail };
+
+  if (data.status !== "OK" || !data.result) return null;
+  return data.result;
+}
+
+router.get("/managers/:id", async (req, res) => {
+  const id = req.params["id"]!;
+
+  // Demo manager path
+  const demoManager = DEMO_MANAGERS.find((m) => m.id === id);
+  if (demoManager) {
+    const score = scoreManager(demoManager);
+    const ranked = DEMO_MANAGERS.map((m) => ({ ...m, score: scoreManager(m) })).sort(
+      (a, b) => b.score - a.score,
+    );
+    const rank = ranked.findIndex((m) => m.id === id) + 1;
+
+    res.json({
+      ...demoManager,
+      score,
+      rank,
+      locked: false,
+      phone: "(602) 555-0180",
+      website: null,
+      googleMapsUrl: null,
+      openNow: null,
+      openingHours: ["Monday: 9:00 AM – 5:00 PM", "Tuesday: 9:00 AM – 5:00 PM", "Wednesday: 9:00 AM – 5:00 PM", "Thursday: 9:00 AM – 5:00 PM", "Friday: 9:00 AM – 5:00 PM", "Saturday: Closed", "Sunday: Closed"],
+      reviews: [
+        { authorName: "James T.", rating: 5, text: "Excellent management company. Very responsive and professional. They handled our property like it was their own.", relativeTime: "2 months ago" },
+        { authorName: "Maria S.", rating: 4, text: "Good overall experience. Communication could be faster at times, but they resolved all issues satisfactorily.", relativeTime: "4 months ago" },
+        { authorName: "Robert K.", rating: 5, text: "Been with them for 3 years. They find quality tenants quickly and handle maintenance efficiently.", relativeTime: "6 months ago" },
+      ],
+      about: `${demoManager.name} has been serving property owners across the Phoenix metro area for ${demoManager.yearsInBusiness} years. They specialize in ${demoManager.specialties.join(", ")} properties and are known for their transparent fee structure and responsive communication.`,
+    });
+    return;
+  }
+
+  // Google Places path — id is a place_id
+  if (!GOOGLE_API_KEY) {
     res.status(404).json({ error: "Manager not found" });
     return;
   }
 
-  const score = scoreManager(manager);
-  const ranked = DEMO_MANAGERS.map((m) => ({ ...m, score: scoreManager(m) })).sort(
-    (a, b) => b.score - a.score,
-  );
-  const rank = ranked.findIndex((m) => m.id === manager.id) + 1;
+  try {
+    const detail = await fetchPlaceDetail(id);
+    if (!detail) {
+      res.status(404).json({ error: "Manager not found" });
+      return;
+    }
 
-  res.json({ ...manager, score, rank, locked: false });
+    const raw: RawManager = {
+      id,
+      name: detail.name,
+      address: detail.formatted_address ?? detail.vicinity ?? "",
+      city: "",
+      googleRating: detail.rating ?? 3.0,
+      googleReviewCount: detail.user_ratings_total ?? 0,
+      bbbComplaints: 0,
+      bbbRating: "N/A",
+      feePercent: null,
+      feeTransparent: false,
+      yearsInBusiness: 5,
+      specialties: [],
+      responseTime: "Unknown",
+    };
+
+    res.json({
+      ...raw,
+      score: scoreManager(raw),
+      rank: 0,
+      locked: false,
+      phone: detail.formatted_phone_number ?? null,
+      website: detail.website ?? null,
+      googleMapsUrl: detail.url ?? null,
+      openNow: detail.opening_hours?.open_now ?? null,
+      openingHours: detail.opening_hours?.weekday_text ?? [],
+      reviews: (detail.reviews ?? []).map((r) => ({
+        authorName: r.author_name,
+        rating: r.rating,
+        text: r.text,
+        relativeTime: r.relative_time_description,
+      })),
+      about: detail.editorial_summary?.overview ?? null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch place details");
+    res.status(500).json({ error: "Failed to load manager details" });
+  }
 });
 
 router.get("/stats", (_req, res) => {

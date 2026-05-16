@@ -33,6 +33,45 @@ export interface Manager {
   locked?: boolean;
 }
 
+export interface Review {
+  authorName: string;
+  rating: number;
+  text: string;
+  relativeTime: string;
+}
+
+export interface ManagerDetail {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  googleRating: number;
+  googleReviewCount: number;
+  bbbRating: string;
+  bbbComplaints: number;
+  /** @nullable */
+  feePercent?: number | null;
+  feeTransparent: boolean;
+  yearsInBusiness: number;
+  specialties: string[];
+  responseTime: string;
+  score: number;
+  rank: number;
+  locked?: boolean;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  googleMapsUrl?: string | null;
+  /** @nullable */
+  openNow?: boolean | null;
+  openingHours?: string[];
+  reviews?: Review[];
+  /** @nullable */
+  about?: string | null;
+}
+
 export interface SearchResults {
   total: number;
   zip: string;
@@ -51,14 +90,10 @@ export interface PlatformStats {
 
 export type SearchManagersParams = {
 /**
- * US ZIP code
  * @minLength 5
  * @maxLength 5
  */
 zip: string;
-/**
- * Search radius in miles
- */
 radius?: SearchManagersRadius;
 };
 

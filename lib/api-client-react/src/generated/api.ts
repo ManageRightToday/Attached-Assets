@@ -18,7 +18,7 @@ import type {
 import type {
   ErrorResponse,
   HealthStatus,
-  Manager,
+  ManagerDetail,
   PlatformStats,
   SearchManagersParams,
   SearchResults
@@ -45,7 +45,6 @@ export const getHealthCheckUrl = () => {
 }
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const healthCheck = async ( options?: RequestInit): Promise<HealthStatus> => {
@@ -130,7 +129,6 @@ export const getSearchManagersUrl = (params: SearchManagersParams,) => {
 }
 
 /**
- * Returns ranked property managers near a ZIP code
  * @summary Search property managers by ZIP code
  */
 export const searchManagers = async (params: SearchManagersParams, options?: RequestInit): Promise<SearchResults> => {
@@ -208,12 +206,11 @@ export const getGetManagerUrl = (id: string,) => {
 }
 
 /**
- * Returns full details for a specific property manager (requires unlock)
- * @summary Get full manager details
+ * @summary Get full manager profile with contact info and reviews
  */
-export const getManager = async (id: string, options?: RequestInit): Promise<Manager> => {
+export const getManager = async (id: string, options?: RequestInit): Promise<ManagerDetail> => {
 
-  return customFetch<Manager>(getGetManagerUrl(id),
+  return customFetch<ManagerDetail>(getGetManagerUrl(id),
   {
     ...options,
     method: 'GET'
@@ -256,7 +253,7 @@ export type GetManagerQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get full manager details
+ * @summary Get full manager profile with contact info and reviews
  */
 
 export function useGetManager<TData = Awaited<ReturnType<typeof getManager>>, TError = ErrorType<ErrorResponse>>(
@@ -286,7 +283,6 @@ export const getGetStatsUrl = () => {
 }
 
 /**
- * Returns aggregate stats about the PropVault database
  * @summary Get platform statistics
  */
 export const getStats = async ( options?: RequestInit): Promise<PlatformStats> => {

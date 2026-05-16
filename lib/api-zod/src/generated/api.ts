@@ -9,7 +9,6 @@ import * as zod from 'zod';
 
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -18,7 +17,6 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns ranked property managers near a ZIP code
  * @summary Search property managers by ZIP code
  */
 export const searchManagersQueryZipMin = 5;
@@ -27,8 +25,8 @@ export const searchManagersQueryZipMax = 5;
 export const searchManagersQueryRadiusDefault = 10;
 
 export const SearchManagersQueryParams = zod.object({
-  "zip": zod.coerce.string().min(searchManagersQueryZipMin).max(searchManagersQueryZipMax).describe('US ZIP code'),
-  "radius": zod.union([zod.literal(5),zod.literal(10),zod.literal(25),zod.literal(50)]).default(searchManagersQueryRadiusDefault).describe('Search radius in miles')
+  "zip": zod.coerce.string().min(searchManagersQueryZipMin).max(searchManagersQueryZipMax),
+  "radius": zod.union([zod.literal(5),zod.literal(10),zod.literal(25),zod.literal(50)]).default(searchManagersQueryRadiusDefault)
 })
 
 export const SearchManagersResponse = zod.object({
@@ -59,8 +57,7 @@ export const SearchManagersResponse = zod.object({
 
 
 /**
- * Returns full details for a specific property manager (requires unlock)
- * @summary Get full manager details
+ * @summary Get full manager profile with contact info and reviews
  */
 export const GetManagerParams = zod.object({
   "id": zod.coerce.string()
@@ -82,12 +79,23 @@ export const GetManagerResponse = zod.object({
   "responseTime": zod.string(),
   "score": zod.number(),
   "rank": zod.number(),
-  "locked": zod.boolean().optional()
+  "locked": zod.boolean().optional(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "googleMapsUrl": zod.string().nullish(),
+  "openNow": zod.boolean().nullish(),
+  "openingHours": zod.array(zod.string()).optional(),
+  "reviews": zod.array(zod.object({
+  "authorName": zod.string(),
+  "rating": zod.number(),
+  "text": zod.string(),
+  "relativeTime": zod.string()
+})).optional(),
+  "about": zod.string().nullish()
 })
 
 
 /**
- * Returns aggregate stats about the PropVault database
  * @summary Get platform statistics
  */
 export const GetStatsResponse = zod.object({
