@@ -329,7 +329,7 @@ router.get("/search", async (req, res) => {
     total: ranked.length,
     zip,
     radius,
-    freeManagers: [...freeManagers, ...lockedManagers],
+    freeManagers: [...lockedManagers, ...freeManagers],
     lockedCount: lockedManagers.length,
     isDemo,
   });
