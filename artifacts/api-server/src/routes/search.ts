@@ -383,6 +383,7 @@ async function fetchPlaceDetail(placeId: string): Promise<PlaceDetail | null> {
     `https://maps.googleapis.com/maps/api/place/details/json` +
     `?place_id=${encodeURIComponent(placeId)}` +
     `&fields=${fields}` +
+    `&reviews_sort=newest` +
     `&key=${GOOGLE_API_KEY}`;
 
   const res = await fetch(url);

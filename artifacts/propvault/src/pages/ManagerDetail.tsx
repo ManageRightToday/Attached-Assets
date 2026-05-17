@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useGetManager, getGetManagerQueryKey } from "@workspace/api-client-react";
-import { Loader2, MapPin, Star, ShieldAlert, Award, FileText, CheckCircle2, AlertCircle, Phone, Globe, ArrowLeft, Clock } from "lucide-react";
+import { Loader2, MapPin, Star, ShieldAlert, Award, FileText, CheckCircle2, AlertCircle, Phone, Globe, ArrowLeft, Clock, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -235,10 +235,15 @@ export default function ManagerDetail() {
                 transition={{ delay: 0.4 }}
                 className="flex flex-col gap-6 pt-4"
               >
-                <h2 className="text-2xl font-serif font-bold text-foreground">What clients say</h2>
+                <div className="flex items-baseline justify-between gap-4">
+                  <h2 className="text-2xl font-serif font-bold text-foreground">What clients say</h2>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    Showing {manager.reviews.length} most recent
+                  </span>
+                </div>
                 <div className="flex flex-col gap-4">
-                  {manager.reviews.slice(0, 5).map((review, idx) => {
-                    const reviewColor = review.rating >= 4.5 ? "text-status-green" : review.rating >= 4 ? "text-gold" : "text-status-red";
+                  {manager.reviews.map((review, idx) => {
+                    const reviewColor = review.rating >= 5 ? "text-status-green" : review.rating >= 4 ? "text-gold" : "text-status-red";
                     return (
                       <div key={idx} className="bg-card border border-border rounded-lg p-5 flex flex-col gap-3">
                         <div className="flex justify-between items-start gap-4">
@@ -256,6 +261,18 @@ export default function ManagerDetail() {
                     );
                   })}
                 </div>
+                {manager.googleMapsUrl && (
+                  <a
+                    href={manager.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="link-all-reviews"
+                    className="inline-flex items-center gap-2 text-sm text-gold hover:text-gold-light transition-colors font-medium self-start"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    See all {manager.googleReviewCount} reviews on Google
+                  </a>
+                )}
               </motion.section>
             )}
           </div>
